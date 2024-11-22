@@ -268,6 +268,71 @@ bool STC3x::forcedRecalibration(float concentration, uint16_t delayMillis)
   return (success);
 }
 
+bool STC3x::setForcedRecalibrationOffset(uint16_t offset, uint16_t delayMiilis)
+{
+  bool success = sendCommand(STC3X_COMMAND_WRITE_FRC_OFFSET_VALUE, offset);
+  if (delayMillis > 0)
+    delay(delayMillis); // Allow time for the measurement to complete
+  return (success);
+}
+uint16_t STC3x::getForcedRecalibrationOffset(void)
+{
+    STC3x_unsigned16Bytes_t offset; // Placeholder for the offset value
+    offset.unsigned16 = 0;
+
+    // Send the command to read the FRC Offset
+    _i2cPort->beginTransmission(_stc3x_i2c_address);
+    _i2cPort->write(STC3X_COMMAND_READ_FRC_OFFSET_VALUE >> 8);   // MSB
+    _i2cPort->write(STC3X_COMMAND_READ_FRC_OFFSET_VALUE & 0xFF); // LSB
+    if (_i2cPort->endTransmission() != 0)
+        return 0xFFFF; // Indicate an error using a special value
+
+    delay(75); // Wait for the sensor to process the command
+
+    // Request 3 bytes: 2 data bytes and 1 CRC byte
+    uint8_t receivedBytes = _i2cPort->requestFrom((uint8_t)_stc3x_i2c_address, (uint8_t)3);
+    if (receivedBytes != 3)
+        return 0xFFFF; // Error: Expected 3 bytes
+
+    // Read the data bytes and CRC byte
+    uint8_t dataBytes[2];
+    uint8_t crcByte;
+
+    if (_i2cPort->available())
+    {
+        dataBytes[0] = _i2cPort->read(); // MSB of the offset
+        dataBytes[1] = _i2cPort->read(); // LSB of the offset
+        crcByte = _i2cPort->read();      // CRC byte
+
+        // Validate CRC
+        uint8_t calculatedCrc = computeCRC8(dataBytes, 2);
+        if (calculatedCrc != crcByte)
+        {
+            if (_printDebug)
+            {
+                _debugPort->print(F("STC3x::getForcedRecalibrationOffset: CRC mismatch. Expected 0x"));
+                _debugPort->print(calculatedCrc, HEX);
+                _debugPort->print(F(", got 0x"));
+                _debugPort->println(crcByte, HEX);
+            }
+            return 0xFFFF; // Return error value for CRC mismatch
+        }
+    }
+    else
+    {
+        if (_printDebug)
+            _debugPort->println(F("STC3x::getForcedRecalibrationOffset: No data received from sensor."));
+        return 0xFFFF; // Indicate an error due to no data
+    }
+
+    // Combine the two bytes into a 16-bit unsigned value
+    offset.bytes[0] = dataBytes[1]; // LSB
+    offset.bytes[1] = dataBytes[0]; // MSB
+
+    return offset.unsigned16; // Return the FRC offset value
+}
+
+
 //Perform self test. Takes 20ms to complete. See 3.3.10
 //In case of a successful self-test the sensor returns 0x0000 with correct CRC.
 bool STC3x::performSelfTest(void)

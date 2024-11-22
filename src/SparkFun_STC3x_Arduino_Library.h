@@ -68,6 +68,14 @@ typedef enum
 #define STC3X_COMMAND_READ_PRODUCT_IDENTIFIER_1               0x367C
 #define STC3X_COMMAND_READ_PRODUCT_IDENTIFIER_2               0xE102
 
+#define STC3X_COMMAND_PREPARE_READ_STATE                      0x3752
+#define STC3X_COMMAND_READ_WRITE_STATE                        0xE133
+#define STC3X_COMMAND_APPLY_STATE                             0x3650
+
+#define STC3X_COMMAND_READ_FRC_OFFSET_VALUE                   0x370A
+#define STC3X_COMMAND_WRITE_FRC_OFFSET_VALUE                  0x3608
+
+
 typedef union
 {
   int16_t signed16;
@@ -121,12 +129,15 @@ public:
   // Set the atmospheric pressure: 600mbar to 1200mbar
   bool setPressure(uint16_t pressure); // Returns true if I2C transfer was OK
 
+  
   bool measureGasConcentration(void); // Check for fresh data; store it. Returns true if fresh data is available
 
   float getCO2(void); // Return the CO2 concentration %. Automatically request fresh data is the data is 'stale'
   float getTemperature(void); // Return the temperature. Automatically request fresh data is the data is 'stale'
 
   bool forcedRecalibration(float concentration, uint16_t delayMillis = 75);
+  bool setForcedRecalibrationOffset(uint16_t offset, uint16_t delayMillis = 0); // Set the offset value of FRC.
+  uint16_t getForcedRecalibrationOffset(void); // Return the offset value which is used after applying FRC.
 
   bool enableAutomaticSelfCalibration(void) { return (sendCommand(STC3X_COMMAND_AUTOMATIC_CALIBRATION_ENABLE)); }
   bool disableAutomaticSelfCalibration(void) { return (sendCommand(STC3X_COMMAND_AUTOMATIC_CALIBRATION_DISABLE)); }
@@ -143,6 +154,7 @@ public:
   bool sendCommand(uint16_t command);
 
   bool readRegister(uint16_t registerAddress, uint16_t *response, uint16_t delayMillis = 0);
+
 
   uint8_t computeCRC8(uint8_t data[], uint8_t len);
 
