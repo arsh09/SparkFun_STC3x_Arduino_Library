@@ -268,6 +268,11 @@ bool STC3x::forcedRecalibration(float concentration, uint16_t delayMillis)
   return (success);
 }
 
+// Set sensor FRC offset in the current power cycly that can be stored in host 
+// when the last FRC was applied (using forcedRecalibration)
+// and then the offset was stored using getForcedRecalibrationOffset in the 
+// host. 
+// See 3.3.14
 bool STC3x::setForcedRecalibrationOffset(uint16_t offset, uint16_t delayMiilis)
 {
   bool success = sendCommand(STC3X_COMMAND_WRITE_FRC_OFFSET_VALUE, offset);
@@ -275,6 +280,12 @@ bool STC3x::setForcedRecalibrationOffset(uint16_t offset, uint16_t delayMiilis)
     delay(delayMillis); // Allow time for the measurement to complete
   return (success);
 }
+
+
+// Get sensor FRC offset that was applied after the FRC. 
+// This offset can be saved in the host and can be applied 
+// on the next power cycle (in cases where FRC can not be done). 
+// See 3.3.13
 uint16_t STC3x::getForcedRecalibrationOffset(void)
 {
     STC3x_unsigned16Bytes_t offset; // Placeholder for the offset value
