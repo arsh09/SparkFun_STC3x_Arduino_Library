@@ -120,6 +120,7 @@ bool STC3x::setPressure(uint16_t pressure)
   return (success);
 }
 
+
 //Get 9 bytes from STC3x. See 3.3.6
 //Updates global variables with floats
 //Returns true if data is read successfully
@@ -127,16 +128,16 @@ bool STC3x::measureGasConcentration(void)
 {
   // The measurement command should not be triggered more often than once a second.
   // Check if it is OK to trigger a new measurement
-  if (millis() < (_lastReadTimeMillis + 1000))
-  {
-    if (_printDebug == true)
-    {
-      _debugPort->print(F("STC3x::measureGasConcentration: too early! Please wait another "));
-      _debugPort->print(_lastReadTimeMillis + 1000 - millis());
-      _debugPort->println(F("ms"));
-    }
-    return (false); // Too early!
-  }
+  // if (millis() < (_lastReadTimeMillis + 1000))
+  // {
+  //   if (_printDebug == true)
+  //   {
+  //     _debugPort->print(F("STC3x::measureGasConcentration: too early! Please wait another "));
+  //     _debugPort->print(_lastReadTimeMillis + 1000 - millis());
+  //     _debugPort->println(F("ms"));
+  //   }
+  //   return (false); // Too early!
+  // }
 
   STC3x_unsigned16Bytes_t tempCO2;
   tempCO2.unsigned16 = 0;
@@ -149,7 +150,7 @@ bool STC3x::measureGasConcentration(void)
   if (_i2cPort->endTransmission() != 0)
     return (false); //Sensor did not ACK
 
-  delay(75); //Datasheet specifies 66ms but sensor seems to need at least 70ms. 75ms provides margin.
+  delay(66); //Datasheet specifies 66ms but sensor seems to need at least 70ms. 75ms provides margin.
 
   uint8_t receivedBytes = (uint8_t)_i2cPort->requestFrom((uint8_t)_stc3x_i2c_address, (uint8_t)9);
   bool error = false;
@@ -273,11 +274,19 @@ bool STC3x::forcedRecalibration(float concentration, uint16_t delayMillis)
 // and then the offset was stored using getForcedRecalibrationOffset in the 
 // host. 
 // See 3.3.14
-bool STC3x::setForcedRecalibrationOffset(uint16_t offset, uint16_t delayMiilis)
+bool STC3x::setForcedRecalibrationOffset(uint16_t offset, uint16_t delayMillis)
 {
-  bool success = sendCommand(STC3X_COMMAND_WRITE_FRC_OFFSET_VALUE, offset);
+  bool success = sendCommand(STC3X_COMMAND_WRITE_FRC_OFFSET_VALUE, offset, false);
   if (delayMillis > 0)
     delay(delayMillis); // Allow time for the measurement to complete
+  
+  if (_printDebug == true ){
+    if ( success  == true ){
+     _debugPort->println(F("STC3x::setForcedRecalibrationOffset: succeeded."));
+    } else {
+     _debugPort->println(F("STC3x::setForcedRecalibrationOffset: encountered error reading STC3x data."));
+    }
+  }
   return (success);
 }
 
@@ -287,60 +296,21 @@ bool STC3x::setForcedRecalibrationOffset(uint16_t offset, uint16_t delayMiilis)
 // on the next power cycle (in cases where FRC can not be done). 
 // See 3.3.13
 uint16_t STC3x::getForcedRecalibrationOffset(void)
-{
-    STC3x_unsigned16Bytes_t offset; // Placeholder for the offset value
-    offset.unsigned16 = 0;
+{ 
+  uint16_t response;
+  bool success = readRegister(STC3X_COMMAND_READ_FRC_OFFSET_VALUE, &response, 20);
 
-    // Send the command to read the FRC Offset
-    _i2cPort->beginTransmission(_stc3x_i2c_address);
-    _i2cPort->write(STC3X_COMMAND_READ_FRC_OFFSET_VALUE >> 8);   // MSB
-    _i2cPort->write(STC3X_COMMAND_READ_FRC_OFFSET_VALUE & 0xFF); // LSB
-    if (_i2cPort->endTransmission() != 0)
-        return 0xFFFF; // Indicate an error using a special value
+  if (_printDebug == true)
+  {
+    _debugPort->print(F("STC3x::getForcedRecalibrationOffset: sensor response is 0x"));
+    if (response < 0x1000) _debugPort->print(F("0"));
+    if (response < 0x100) _debugPort->print(F("0"));
+    if (response < 0x10) _debugPort->print(F("0"));
+    _debugPort->println(response, HEX);
+  }
 
-    delay(75); // Wait for the sensor to process the command
-
-    // Request 3 bytes: 2 data bytes and 1 CRC byte
-    uint8_t receivedBytes = _i2cPort->requestFrom((uint8_t)_stc3x_i2c_address, (uint8_t)3);
-    if (receivedBytes != 3)
-        return 0xFFFF; // Error: Expected 3 bytes
-
-    // Read the data bytes and CRC byte
-    uint8_t dataBytes[2];
-    uint8_t crcByte;
-
-    if (_i2cPort->available())
-    {
-        dataBytes[0] = _i2cPort->read(); // MSB of the offset
-        dataBytes[1] = _i2cPort->read(); // LSB of the offset
-        crcByte = _i2cPort->read();      // CRC byte
-
-        // Validate CRC
-        uint8_t calculatedCrc = computeCRC8(dataBytes, 2);
-        if (calculatedCrc != crcByte)
-        {
-            if (_printDebug)
-            {
-                _debugPort->print(F("STC3x::getForcedRecalibrationOffset: CRC mismatch. Expected 0x"));
-                _debugPort->print(calculatedCrc, HEX);
-                _debugPort->print(F(", got 0x"));
-                _debugPort->println(crcByte, HEX);
-            }
-            return 0xFFFF; // Return error value for CRC mismatch
-        }
-    }
-    else
-    {
-        if (_printDebug)
-            _debugPort->println(F("STC3x::getForcedRecalibrationOffset: No data received from sensor."));
-        return 0xFFFF; // Indicate an error due to no data
-    }
-
-    // Combine the two bytes into a 16-bit unsigned value
-    offset.bytes[0] = dataBytes[1]; // LSB
-    offset.bytes[1] = dataBytes[0]; // MSB
-
-    return offset.unsigned16; // Return the FRC offset value
+  return response ; 
+  // return (success && (response == 0x0000));
 }
 
 
@@ -507,6 +477,29 @@ bool STC3x::sendCommand(uint16_t command)
   _i2cPort->beginTransmission(_stc3x_i2c_address);
   _i2cPort->write(command >> 8);   //MSB
   _i2cPort->write(command & 0xFF); //LSB
+  if (_i2cPort->endTransmission() != 0)
+    return (false); //Sensor did not ACK
+
+  return (true);
+}
+
+//Sends a command along with arguments and optional CRC
+bool STC3x::sendCommand(uint16_t command, uint16_t arguments, bool add_crc)
+{
+  uint8_t data[2];
+  data[0] = arguments >> 8;
+  data[1] = arguments & 0xFF;
+  
+
+  _i2cPort->beginTransmission(_stc3x_i2c_address);
+  _i2cPort->write(command >> 8);     //MSB
+  _i2cPort->write(command & 0xFF);   //LSB
+  _i2cPort->write(arguments >> 8);   //MSB
+  _i2cPort->write(arguments & 0xFF); //LSB
+  if ( add_crc ){
+    uint8_t crc = computeCRC8(data, 2); //Calc CRC on the arguments only, not the command
+    _i2cPort->write(crc);
+  }
   if (_i2cPort->endTransmission() != 0)
     return (false); //Sensor did not ACK
 

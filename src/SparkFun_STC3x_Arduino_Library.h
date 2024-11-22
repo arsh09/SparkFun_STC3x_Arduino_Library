@@ -47,11 +47,18 @@
 
 typedef enum
 {
-  STC3X_BINARY_GAS_CO2_N2_100 = 0x0000,                       // Set binary gas to CO2 in N2. Range: 0 to 100 vol%
-  STC3X_BINARY_GAS_CO2_AIR_100,                               // Set binary gas to CO2 in Air. Range: 0 to 100 vol%
-  STC3X_BINARY_GAS_CO2_N2_25,                                 // Set binary gas to CO2 in N2. Range: 0 to 25 vol%
-  STC3X_BINARY_GAS_CO2_AIR_25                                 // Set binary gas to CO2 in Air. Range: 0 to 25 vol%
+  STC3X_BINARY_GAS_CO2_N2_100 = 0x0000,                      // Set binary gas to CO2 in N2. Range: 0 to 100 vol%
+  STC3X_BINARY_GAS_CO2_AIR_100 = 0x0001,                     // Set binary gas to CO2 in Air. Range: 0 to 100 vol%
+  STC3X_BINARY_GAS_CO2_N2_25 = 0x0002,                       // Set binary gas to CO2 in N2. Range: 0 to 25 vol%
+  STC3X_BINARY_GAS_CO2_AIR_25 = 0x0003,                      // Set binary gas to CO2 in Air. Range: 0 to 25 vol%
+
+  STC3X_BINARY_GAS_CO2_N2_100_LOW_CROSS = 0x0010,             // Set binary gas to CO2 in N2. Range: 0 to 100 vol%
+  STC3X_BINARY_GAS_CO2_AIR_100_LOW_CROSS = 0x0011,            // Set binary gas to CO2 in Air. Range: 0 to 100 vol%
+  STC3X_BINARY_GAS_CO2_N2_40_LOW_CROSS = 0x0012,              // Set binary gas to CO2 in N2. Range: 0 to 40 vol%
+  STC3X_BINARY_GAS_CO2_AIR_40_LOW_CROSS = 0x0013,             // Set binary gas to CO2 in Air. Range: 0 to 40 vol%
+
 } STC3X_binary_gas_type_e;
+ 
 
 #define STC3X_COMMAND_SET_RELATIVE_HUMIDITY                   0x3624
 #define STC3X_COMMAND_SET_TEMPERATURE                         0x361E
@@ -136,7 +143,7 @@ public:
   float getTemperature(void); // Return the temperature. Automatically request fresh data is the data is 'stale'
 
   bool forcedRecalibration(float concentration, uint16_t delayMillis = 75);
-  bool setForcedRecalibrationOffset(uint16_t offset, uint16_t delayMillis = 0); // Set the offset value of FRC.
+  bool setForcedRecalibrationOffset(uint16_t offset, uint16_t delayMillis = 75); // Set the offset value of FRC.
   uint16_t getForcedRecalibrationOffset(void); // Return the offset value which is used after applying FRC.
 
   bool enableAutomaticSelfCalibration(void) { return (sendCommand(STC3X_COMMAND_AUTOMATIC_CALIBRATION_ENABLE)); }
@@ -152,6 +159,7 @@ public:
 
   bool sendCommand(uint16_t command, uint16_t arguments);
   bool sendCommand(uint16_t command);
+  bool sendCommand(uint16_t command, uint16_t arguments, bool add_crc);
 
   bool readRegister(uint16_t registerAddress, uint16_t *response, uint16_t delayMillis = 0);
 
