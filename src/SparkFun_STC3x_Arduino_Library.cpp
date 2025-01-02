@@ -30,8 +30,10 @@ STC3x::STC3x(STC3x_sensor_product_number_e sensorType)
 }
 
 //Initialize the Serial port
-#ifdef USE_TEENSY3_I2C_LIB
+#if defined(USE_TEENSY3_I2C_LIB)
 bool STC3x::begin(uint8_t i2cAddress, i2c_t3 &wirePort)
+#elif defined(USE_SOFT_WIRE_I2C_LIB)
+bool STC3x::begin(uint8_t i2cAddress, SoftWire &wirePort)
 #else
 bool STC3x::begin(uint8_t i2cAddress, TwoWire &wirePort)
 #endif

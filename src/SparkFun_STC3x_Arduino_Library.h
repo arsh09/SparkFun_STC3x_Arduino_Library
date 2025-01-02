@@ -28,10 +28,13 @@
 // Then you also have to include <i2c_t3.h> on your application instead of <Wire.h>
 
 // #define USE_TEENSY3_I2C_LIB
+// #define USE_SOFT_WIRE_I2C_LIB
 
 #include "Arduino.h"
-#ifdef USE_TEENSY3_I2C_LIB
+#if defined(USE_TEENSY3_I2C_LIB)
 #include <i2c_t3.h>
+#elif defined(USE_SOFT_WIRE_I2C_LIB)
+#include <SoftWire.h>
 #else
 #include <Wire.h>
 #endif
@@ -117,11 +120,14 @@ class STC3x
 public:
   STC3x(STC3x_sensor_product_number_e sensorType = STC3x_SENSOR_STC31);
 
-#ifdef USE_TEENSY3_I2C_LIB
+#if defined(USE_TEENSY3_I2C_LIB)
   bool begin(uint8_t i2cAddress = STC3x_DEFAULT_ADDRESS, i2c_t3 &wirePort = Wire); //By default use Wire port
+#elif defined(USE_SOFT_WIRE_I2C_LIB)
+  bool begin(uint8_t i2cAddress, SoftWire &wirePort ); // use softwire
 #else
   bool begin(uint8_t i2cAddress = STC3x_DEFAULT_ADDRESS, TwoWire &wirePort = Wire); //By default use Wire port
 #endif
+
 
   void enableDebugging(Stream &debugPort = Serial); //Turn on debug printing. If user doesn't specify then Serial will be used
 
@@ -168,8 +174,10 @@ public:
 
 private:
   //Variables
-#ifdef USE_TEENSY3_I2C_LIB
+#if defined(USE_TEENSY3_I2C_LIB)
   i2c_t3 *_i2cPort = NULL; //The generic connection to user's chosen I2C hardware
+#elif defined(USE_SOFT_WIRE_I2C_LIB)
+  SoftWire *_i2cPort = NULL; // the generic connection to user's chosen I2C software
 #else
   TwoWire *_i2cPort = NULL; //The generic connection to user's chosen I2C hardware
 #endif
